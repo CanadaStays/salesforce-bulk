@@ -1,0 +1,21 @@
+{
+    "name": "CanadaStays/salesforce-bulk",
+    "description": "PHP Bulk API Client for Salesforce.",
+    "keywords": ["workbench", "salesforce"],
+    "homepage": "https://github.com/canadastays-v5/salesforce-bulk",
+    "license": "MIT",
+    "require": {
+        "php": ">=7.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "SalesforceBulk\\": "/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ryan Brainard",
+            "homepage": "https://github.com/ryanbrainard"
+        }
+    ]
+}

@@ -1,6 +1,9 @@
 <?php
-require_once 'JobInfo.php';
-require_once 'BatchInfo.php';
+
+namespace SalesforceBulk;
+
+use Exception;
+use SimpleXMLElement;
 
 /**
  * PHP BULK API CLIENT
@@ -42,53 +45,54 @@ require_once 'BatchInfo.php';
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+class BulkApiClient
+{
+    const URL_SLASH = '/';
+    const JOB = 'job';
+    const BATCH = 'batch';
+    const REQUEST = 'request';
+    const RESULT = 'result';
 
-class BulkApiClient {
-
-    const URL_SLASH = "/";
-    const JOB = "job";
-    const BATCH = "batch";
-    const REQUEST = "request";
-    const RESULT = "result";
-
-    const CONTENT_TYPE_XML = "application/xml";
-    const CONTENT_TYPE_CSV = "text/csv";
-    const CONTENT_TYPE_ZIP_CSV = "zip/csv";
-    const CONTENT_TYPE_ZIP_XML = "zip/xml";
-
+    const CONTENT_TYPE_XML = 'application/xml';
+    const CONTENT_TYPE_CSV = 'text/csv';
+    const CONTENT_TYPE_ZIP_CSV = 'zip/csv';
+    const CONTENT_TYPE_ZIP_XML = 'zip/xml';
 
     private $endpoint;
     private $sessionId;
     private $proxySettings;
-    private $userAgent = "PHP-BulkApiClient/25.0.0";
+    private $userAgent = 'PHP-BulkApiClient/25.0.0';
     private $compressionEnabled = true;
     private $includeSessionCookie = false;
     private $logs;
     private $loggingEnabled = false;
-    const CSV = "CSV";
-    const XML = "XML";
-    const ZIP_CSV = "ZIP_CSV";
-    const ZIP_XML = "ZIP_XML";
+    const CSV = 'CSV';
+    const XML = 'XML';
+    const ZIP_CSV = 'ZIP_CSV';
+    const ZIP_XML = 'ZIP_XML';
 
     /**
-     * Create a new Bulk API Client from an existing Partner API enpoint and session id
+     * Create a new Bulk API Client from an existing Partner API enpoint and session id.
      *
-     * @param  string $endpoint endpoint from Async/Bulk, Partner, or Enterprise APIs
-     * @param  string $sessionId active Salesforce session id
+     * @param string $endpoint endpoint from Async/Bulk, Partner, or Enterprise APIs.
+     * @param string $sessionId active Salesforce session id.
+     *
+     * @throws Exception
      */
-    public function __construct($endpoint, $sessionId) {
-		if (!extension_loaded('curl')) {
-			throw new Exception('Missing required cURL extension.');
-		}
+    public function __construct($endpoint, $sessionId)
+    {
+        if (!extension_loaded('curl')) {
+            throw new Exception('Missing required cURL extension.');
+        }
 
         if ($endpoint == null) {
-            throw new Exception("Endpoint not set.");
+            throw new Exception('Endpoint not set.');
         }
 
         if ($sessionId == null) {
-            throw new Exception("Session Id not set.");
+            throw new Exception('Session Id not set.');
         }
-	
+
         $this->endpoint = $this->convertEndpoint($endpoint);
         $this->sessionId = $sessionId;
     }
@@ -99,128 +103,154 @@ class BulkApiClient {
      *
      * @param array $proxySettings
      */
-    public function setProxySettings($proxySettings) {
+    public function setProxySettings($proxySettings)
+    {
         $this->proxySettings = $proxySettings;
     }
 
     /**
      * @return string the user agent for this client
      */
-    public function getUserAgent() {
+    public function getUserAgent()
+    {
         return $this->userAgent;
     }
 
     /**
      * @param string $userAgent customized user agent for this client
      */
-    public function setUserAgent($userAgent) {
+    public function setUserAgent($userAgent)
+    {
         $this->userAgent = $userAgent;
     }
 
     /**
      * @return bool true if GZIP compression is enabled
      */
-    public function isCompressionEnabled() {
+    public function isCompressionEnabled()
+    {
         return $this->compressionEnabled;
     }
 
     /**
      * @param  bool $compressionEnabled true to enable compression
      */
-    public function setCompressionEnabled($compressionEnabled) {
+    public function setCompressionEnabled($compressionEnabled)
+    {
         $this->compressionEnabled = $compressionEnabled;
     }
 
     /**
      * @return bool true is session id is included as a cookie
      */
-    public function getIncludeSessionCookie() {
+    public function getIncludeSessionCookie()
+    {
         return $this->includeSessionCookie;
     }
 
     /**
      * @param $includeSessionCookie true to have session id included as a cookie
      */
-    public function setIncludeSessionCookie($includeSessionCookie) {
+    public function setIncludeSessionCookie($includeSessionCookie)
+    {
         $this->includeSessionCookie = $includeSessionCookie;
     }
 
-    private function convertEndpoint($endpoint) {
-        $endpoint = preg_replace("!Soap/\w/(\d{1,2}\.\d)(/)?(00D.*)?!", "async/$1", $endpoint);
+    private function convertEndpoint($endpoint)
+    {
+        $endpoint = preg_replace("!Soap/\w/(\d{1,2}\.\d)(/)?(00D.*)?!", 'async/$1', $endpoint);
 
-        if (preg_match("!https?://.*/services/async/\d{1,2}\.\d$!", $endpoint) == 0) {
-            throw new Exception("Invalid endpoint format: " . $endpoint);
+        if (!preg_match("!https?://.*/services/async/\d{1,2}\.\d$!", $endpoint)) {
+            throw new Exception('Invalid endpoint format: ' . $endpoint);
         }
 
         if (!$this->apiVersionIsAtLeast($endpoint, 16.0)) {
-            throw new Exception("Bulk API operations only supported in API 16.0 and higher.");
+            throw new Exception('Bulk API operations only supported in API 16.0 and higher.');
         }
 
-         return $endpoint;
+        return $endpoint;
     }
 
-    private function apiVersionIsAtLeast($endpoint, $minVersion) {
-        preg_match('!/(\d{1,2}\.\d)!',$endpoint,$apiVersionMatches);
+    private function apiVersionIsAtLeast($endpoint, $minVersion)
+    {
+        preg_match('!/(\d{1,2}\.\d)!', $endpoint, $apiVersionMatches);
+
         return $apiVersionMatches[1] >= $minVersion;
     }
 
     /**
      * Creates a new job from a given in-memory JobInfo object and returns
      * a new JobInfo object populated with additional information
-     * from the Bulk API
+     * from the Bulk API.
      *
      * @param JobInfo $job
+     *
+     * @throws Exception
+     *
      * @return JobInfo
      */
-    public function createJob(JobInfo $job) {
+    public function createJob(JobInfo $job)
+    {
         $this->validateJob($job);
-        $createdJob = $this->post($this->url(array(self::JOB)), self::CONTENT_TYPE_XML, $job->asXml());
+        $createdJob = $this->post($this->url([self::JOB]), self::CONTENT_TYPE_XML, $job->asXml());
+
         return new JobInfo($createdJob);
     }
 
     /**
      * Updates job from a given in-memory JobInfo object and returns
      * a new JobInfo object populated with additional information
-     * from the Bulk API
+     * from the Bulk API.
      *
      * @param JobInfo $job
+     *
+     * @throws Exception
+     *
      * @return JobInfo updated
      */
-    public function updateJob(JobInfo $job) {
+    public function updateJob(JobInfo $job)
+    {
         $this->validateJob($job);
-        $updatedJob = $this->post($this->url(array(self::JOB, $job->getId())), self::CONTENT_TYPE_XML, $job->asXml());
+        $updatedJob = $this->post($this->url([self::JOB, $job->getId()]), self::CONTENT_TYPE_XML, $job->asXml());
+
         return new JobInfo($updatedJob);
     }
 
-    private function validateJob(JobInfo $job) {
+    private function validateJob(JobInfo $job)
+    {
         if ($job->getContentType() == self::CSV && !$this->apiVersionIsAtLeast($this->endpoint, 17.0)) {
             throw new Exception("Content Type 'CSV' only supported in API 17.0 and higher.");
         }
 
-        if ($job->getOpertion() == "delete" && !$this->apiVersionIsAtLeast($this->endpoint, 18.0)) {
+        if ($job->getOpertion() == 'delete' && !$this->apiVersionIsAtLeast($this->endpoint, 18.0)) {
             throw new Exception("Bulk API 'Delete' operation only supported in API 18.0 and higher.");
         }
 
-        if ($job->getOpertion() == "hardDelete" && !$this->apiVersionIsAtLeast($this->endpoint, 19.0)) {
+        if ($job->getOpertion() == 'hardDelete' && !$this->apiVersionIsAtLeast($this->endpoint, 19.0)) {
             throw new Exception("Bulk API 'Hard Delete' operation only supported in API 19.0 and higher.");
         }
 
-        if (in_array($job->getContentType(), array(self::ZIP_CSV, self::ZIP_XML)) && !$this->apiVersionIsAtLeast($this->endpoint, 20.0)) {
-            throw new Exception("Zipped Content Types only supported in API 20.0 and higher.");
+        if (in_array($job->getContentType(), [self::ZIP_CSV, self::ZIP_XML]) && !$this->apiVersionIsAtLeast($this->endpoint, 20.0)) {
+            throw new Exception('Zipped Content Types only supported in API 20.0 and higher.');
         }
     }
 
     /**
-     * Convenience function for changing the state of a job identified by a given jobId
+     * Convenience function for changing the state of a job identified by a given jobId.
      *
-     * @param  $jobId
-     * @param  $state
+     * @param $jobId
+     * @param $state
+     *
+     * @throws Exception
+     *
      * @return JobInfo
      */
-    public function updateJobState($jobId, $state) {
-        $job = new JobInfo();
+    public function updateJobState($jobId, $state)
+    {
+        $job = new JobInfo;
         $job->setId($jobId);
         $job->setState($state);
+
         return $this->updateJob($job);
     }
 
@@ -228,62 +258,72 @@ class BulkApiClient {
      * Query for the JobInfo of a given jobId
      *
      * @param  $jobId
+     *
+     * @throws Exception
+     *
      * @return JobInfo
      */
-    public function getJobInfo($jobId) {
-        return new JobInfo($this->get($this->url(array(self::JOB, $jobId))));
+    public function getJobInfo($jobId)
+    {
+        return new JobInfo($this->get($this->url([self::JOB, $jobId])));
     }
 
     /**
-     * Create a new Batch with the given data and associate with the given job
+     * Create a new Batch with the given data and associate with the given job.
      *
      * @param JobInfo $job
      * @param  $data
+     *
+     * @throws Exception
+     *
      * @return BatchInfo
      */
-    public function createBatch(JobInfo $job, $data) {
+    public function createBatch(JobInfo $job, $data)
+    {
         if ($job->getContentType() == self::CSV) {
             $contentType = self::CONTENT_TYPE_CSV;
-        } else if ($job->getContentType() == self::XML) {
+        } elseif ($job->getContentType() == self::XML) {
             $contentType = self::CONTENT_TYPE_XML;
-        } else if ($job->getContentType() == self::ZIP_CSV) {
+        } elseif ($job->getContentType() == self::ZIP_CSV) {
             $contentType = self::CONTENT_TYPE_ZIP_CSV;
-        } else if ($job->getContentType() == self::ZIP_XML) {
+        } elseif ($job->getContentType() == self::ZIP_XML) {
             $contentType = self::CONTENT_TYPE_ZIP_XML;
         } else {
-            throw new Exception("Invalid content type specified for batch");
+            throw new Exception('Invalid content type specified for batch');
         }
 
-        return new BatchInfo($this->post($this->url(array(self::JOB, $job->getId(), self::BATCH)), $contentType, $data));
+        return new BatchInfo($this->post($this->url([self::JOB, $job->getId(), self::BATCH]), $contentType, $data));
     }
 
     /**
-     * Retrieves the BatchInfo for a given jobId and batchId
+     * Retrieves the BatchInfo for a given jobId and batchId.
      *
-     * @param  $jobId
-     * @param  $batchId
+     * @param $jobId
+     * @param $batchId
+     *
+     * @throws Exception
+     *
      * @return BatchInfo
      */
-    public function getBatchInfo($jobId, $batchId) {
-        return new BatchInfo($this->get($this->url(array(self::JOB, $jobId, self::BATCH, $batchId))));
+    public function getBatchInfo($jobId, $batchId)
+    {
+        return new BatchInfo($this->get($this->url([self::JOB, $jobId, self::BATCH, $batchId])));
     }
 
     /**
-     * Finds all the BatchInfos associated with a given jobId
+     * Finds all the BatchInfos associated with a given jobId.
      *
-     * @param  $jobId
+     * @param $jobId
+     *
+     * @throws Exception
+     *
      * @return array of BatchInfos
      */
-    public function getBatchInfos($jobId) {
-        $batchInfos = array();
+    public function getBatchInfos($jobId)
+    {
+        $batchInfos = [];
 
-        try {
-            libxml_disable_entity_loader(true);
-            $batchInfoList = new SimpleXMLElement(disallowDoctype($this->get($this->url(array(self::JOB, $jobId, self::BATCH)))));
-        } finally {
-            libxml_disable_entity_loader(false);
-        }
-        
+        $batchInfoList = new SimpleXMLElement($this->get($this->url([self::JOB, $jobId, self::BATCH])));
         foreach ($batchInfoList as $batchInfoListItem) {
             $batchInfos["$batchInfoListItem->id"] = new BatchInfo($batchInfoListItem->asXml());
         }
@@ -295,45 +335,57 @@ class BulkApiClient {
      * Returns a copy of the sent request for a given jobId and batchId
      * Results can optionally be returned to a file handle if $toFile is set.
      *
-     * @param  $jobId
-     * @param  $batchId
+     * @param $jobId
+     * @param $batchId
+     * @param $toFile
+     *
+     * @throws Exception
+     *
      * @return mixed
      */
-    public function getBatchRequest($jobId, $batchId, $toFile = null) {
+    public function getBatchRequest($jobId, $batchId, $toFile = null)
+    {
         if (!$this->apiVersionIsAtLeast($this->endpoint, 19.0)) {
-            throw new Exception("Getting a batch request is only supported in API 19.0 and higher.");
+            throw new Exception('Getting a batch request is only supported in API 19.0 and higher.');
         }
 
-        return $this->get($this->url(array(self::JOB, $jobId, self::BATCH, $batchId, self::REQUEST)), $toFile);
+        return $this->get($this->url([self::JOB, $jobId, self::BATCH, $batchId, self::REQUEST]), $toFile);
     }
 
     /**
      * Returns either the actual result (DML) or result-list (queries) for a given batch.
      * Results can optionally be returned to a file handle if $toFile is set.
      *
-     * @param  $jobId
-     * @param  $batchId
+     * @param $jobId
+     * @param $batchId
+     * @param $toFile
+     *
      * @return mixed
      */
-    public function getBatchResults($jobId, $batchId, $toFile = null) {
-        return $this->get($this->url(array(self::JOB, $jobId, self::BATCH, $batchId, self::RESULT)), $toFile);
+    public function getBatchResults($jobId, $batchId, $toFile = null)
+    {
+        return $this->get($this->url([self::JOB, $jobId, self::BATCH, $batchId, self::RESULT]), $toFile);
     }
 
     /**
      * Returns an array of resultIds for a given batch wih a result-list.
      * Currently, only applies to Query operations.
      *
-     * @param  $jobId
-     * @param  $batchId
+     * @param $jobId
+     * @param $batchId
+     *
+     * @throws Exception
+     *
      * @return array
      */
-    public function getBatchResultList($jobId, $batchId, $toFile = null) {
+    public function getBatchResultList($jobId, $batchId, $toFile = null)
+    {
         $resultListRaw = $this->getBatchResults($jobId, $batchId, $toFile);
         $resultListXml = new SimpleXMLElement($resultListRaw);
-        $resultListArray = array();
+        $resultListArray = [];
 
         if (!isset($resultListXml->result)) {
-            throw new Exception("No result-list found in the results for Batch " . $batchId);
+            throw new Exception('No result-list found in the results for Batch ' . $batchId);
         }
 
         foreach ($resultListXml->result as $resultId) {
@@ -348,55 +400,67 @@ class BulkApiClient {
      * Results can optionally be returned to a file handle if $toFile is set.
      * Currently, only applies to Query operations.
      *
-     * @param  $jobId
-     * @param  $batchId
-     * @param  $resultId
-     * @param  $toFile
+     * @param $jobId
+     * @param $batchId
+     * @param $resultId
+     * @param $toFile
+     *
      * @return mixed
      */
-    public function getBatchResult($jobId, $batchId, $resultId, $toFile = null) {
-        return $this->get($this->url(array(self::JOB, $jobId, self::BATCH, $batchId, self::RESULT, $resultId)), $toFile);
+    public function getBatchResult($jobId, $batchId, $resultId, $toFile = null)
+    {
+        return $this->get($this->url([self::JOB, $jobId, self::BATCH, $batchId, self::RESULT, $resultId]), $toFile);
     }
 
-    private function http($isPost, $url, $contentType, $data, $toFile) {
+    private function http($isPost, $url, $contentType, $data, $toFile)
+    {
         $this->log("INITIALIZING cURL \n" . print_r(curl_version(), true));
 
         $ch = curl_init();
 
-        $httpHeaders = array(
-            "X-SFDC-Session: " . $this->sessionId,
-            "Accept: application/xml",
-            "User-Agent: " . $this->userAgent,
-            "Expect:"
-        );
+        $httpHeaders = [
+            'X-SFDC-Session: ' . $this->sessionId,
+            'Accept: application/xml',
+            'User-Agent: ' . $this->userAgent,
+            'Expect:'
+        ];
         if (isset($contentType)) {
             $httpHeaders[] = "Content-Type: $contentType; charset=UTF-8";
         }
 
-        if($isPost) curl_setopt($ch, CURLOPT_POST, 1);
+        if ($isPost) {
+            curl_setopt($ch, CURLOPT_POST, 1);
+        }
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $httpHeaders);
-        if($isPost) curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        if ($isPost) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        }
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);                                //TODO: use ca-bundle instead
-        curl_setopt($ch, CURLOPT_SSLVERSION, 6);
-        if($this->compressionEnabled) curl_setopt($ch, CURLOPT_ENCODING, "gzip");   //TODO: add  outbound compression support
+        if ($this->compressionEnabled) {
+            curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+        }   //TODO: add  outbound compression support
 
         if ($this->proxySettings != null) {
-            if (isset($this->proxySettings["proxy_host"])) curl_setopt($ch, CURLOPT_PROXY, $this->proxySettings["proxy_host"]);
-            if (isset($this->proxySettings["proxy_port"])) curl_setopt($ch, CURLOPT_PROXYPORT, $this->proxySettings["proxy_port"]);
-            if (isset($this->proxySettings["proxy_username"]) && isset($this->proxySettings["proxy_password"])) {
-                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $this->proxySettings["proxy_username"] . ":" . $this->proxySettings["proxy_password"]);
+            if (isset($this->proxySettings['proxy_host'])) {
+                curl_setopt($ch, CURLOPT_PROXY, $this->proxySettings['proxy_host']);
+            }
+            if (isset($this->proxySettings['proxy_port'])) {
+                curl_setopt($ch, CURLOPT_PROXYPORT, $this->proxySettings['proxy_port']);
+            }
+            if (isset($this->proxySettings['proxy_username']) && isset($this->proxySettings['proxy_password'])) {
+                curl_setopt($ch, CURLOPT_PROXYUSERPWD, $this->proxySettings['proxy_username'] . ':' . $this->proxySettings['proxy_password']);
             }
         }
 
-        $cookies = array();
+        $cookies = [];
         if ($this->includeSessionCookie) {
-            $cookies[] = "sid=" . $this->sessionId;
+            $cookies[] = 'sid=' . $this->sessionId;
         }
 
         if (count($cookies) > 0) {
-            curl_setopt($ch, CURLOPT_COOKIE, implode("; ", $cookies));
+            curl_setopt($ch, CURLOPT_COOKIE, implode('; ', $cookies));
         }
 
         if (isset($toFile)) {
@@ -409,7 +473,7 @@ class BulkApiClient {
 
         $chResponse = curl_exec($ch);
 
-        $this->log("RESPONSE \n" . (isset($toFile) ? ("Sent to file: " . $toFile) : htmlspecialchars($chResponse)));
+        $this->log("RESPONSE \n" . (isset($toFile) ? ('Sent to file: ' . $toFile) : htmlspecialchars($chResponse)));
 
         if (curl_error($ch) != null) {
             $this->log("ERROR \n" . htmlspecialchars(curl_error($ch)));
@@ -421,67 +485,76 @@ class BulkApiClient {
         return $chResponse;
     }
 
-    private function get($url, $toFile = null) {
+    private function get($url, $toFile = null)
+    {
         return $this->http(false, $url, null, null, $toFile);
     }
 
-    private function post($url, $contentType, $data) {
+    private function post($url, $contentType, $data)
+    {
         return $this->http(true, $url, $contentType, $data, null);
     }
 
-    private function url(array $parts) {
+    private function url(array $parts)
+    {
         return $this->endpoint . self::URL_SLASH . implode(self::URL_SLASH, $parts);
     }
-
 
     //LOGGING FUNCTIONS
 
     /**
-     * @return bool true if logging is enabled
+     * @return bool True if logging is enabled.
      */
-    public function isLoggingEnabled() {
+    public function isLoggingEnabled()
+    {
         return $this->loggingEnabled;
     }
 
     /**
-     * @param  $loggingEnabled bool enables logging if true
+     * @param bool $loggingEnabled Enables logging if true.
      */
-    public function setLoggingEnabled($loggingEnabled) {
+    public function setLoggingEnabled($loggingEnabled)
+    {
         $this->loggingEnabled = $loggingEnabled;
     }
 
     /**
-     * @param  $txt text to log
-     * @return pass through the input
+     * @param string $txt Text to log.
+     *
+     * @return string Pass through the input.
      */
-    protected function log($txt) {
+    protected function log($txt)
+    {
         if ($this->loggingEnabled) {
             $this->logs .= $txt .= "\n\n";
         }
+
         return $txt;
     }
 
     /**
-     * @param  $extLogs a log buffer external to this client
-     * @return void
+     * @param string $extLogs A log buffer external to this client.
      */
-    public function setExternalLogReference(&$extLogs) {
+    public function setExternalLogReference(&$extLogs)
+    {
         $this->logs = &$extLogs;
     }
 
     /**
-     * @return the log buffer
+     * The log buffer.
+     *
+     * @return string|null
      */
-    public function getLogs() {
+    public function getLogs()
+    {
         return $this->logs;
     }
 
     /**
      * clears log buffer
      */
-    public function clearLogs() {
+    public function clearLogs()
+    {
         $this->logs = null;
     }
 }
-
-?>

@@ -1,5 +1,10 @@
 <?php
 
+namespace SalesforceBulk;
+
+use Exception;
+use SimpleXMLElement;
+
 /**
  * PHP BULK API CLIENT
  * @author Ryan Brainard
@@ -40,79 +45,93 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
-
-class BatchInfo {
+class BatchInfo
+{
+    use Concerns\HasValidXml;
 
     private $xml;
 
-    public function __construct($xml) {
+    public function __construct($xml)
+    {
         try {
-            libxml_disable_entity_loader(true);
-            $this->xml = new SimpleXMLElement(disallowDoctype($xml));
+            \libxml_disable_entity_loader(true);
+            $this->xml = new SimpleXMLElement($this->disallowDoctype($xml));
         } finally {
-            libxml_disable_entity_loader(false);
+            \libxml_disable_entity_loader(false);
         }
 
-        if ($this->getExceptionCode() != "") {
-            throw new Exception($this->getExceptionCode() . ": " . $this->getExceptionMessage());
+        $this->xml = new SimpleXMLElement($xml);
+
+        if ($this->getExceptionCode() != '') {
+            throw new Exception($this->getExceptionCode() . ': ' . $this->getExceptionMessage());
         }
     }
 
-    //GETTERS
-    public function getId() {
+    public function getId()
+    {
         return $this->xml->id;
     }
 
-    public function getJobId() {
+    public function getJobId()
+    {
         return $this->xml->jobId;
     }
 
-    public function getState() {
+    public function getState()
+    {
         return $this->xml->state;
     }
 
-    public function getStateMessage() {
+    public function getStateMessage()
+    {
         return $this->xml->stateMessage;
     }
 
-    public function getCreatedDate() {
+    public function getCreatedDate()
+    {
         return $this->xml->createdDate;
     }
 
-    public function getSystemModstamp() {
+    public function getSystemModstamp()
+    {
         return $this->xml->systemModstamp;
     }
 
-    public function getNumberRecordsProcessed() {
+    public function getNumberRecordsProcessed()
+    {
         return $this->xml->numberRecordsProcessed;
     }
 
-    public function getExceptionCode() {
+    public function getExceptionCode()
+    {
         return $this->xml->exceptionCode;
     }
 
-    public function getExceptionMessage() {
+    public function getExceptionMessage()
+    {
         return $this->xml->exceptionMessage;
     }
 
     //New in 19.0 Below:
 
-    public function getTotalProcessingTime() {
+    public function getTotalProcessingTime()
+    {
         return $this->xml->totalProcessingTime;
     }
 
-    public function getApexProcessingTime() {
+    public function getApexProcessingTime()
+    {
         return $this->xml->apexProcessingTime;
     }
 
-    public function getApiActiveProcessingTime() {
+    public function getApiActiveProcessingTime()
+    {
         return $this->xml->apiActiveProcessingTime;
     }
 
-    public function getNumberRecordsFailed() {
+    public function getNumberRecordsFailed()
+    {
         return $this->xml->numberRecordsFailed;
     }
 }
-?>

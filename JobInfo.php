@@ -1,5 +1,9 @@
 <?php
 
+namespace SalesforceBulk;
+
+use SimpleXMLElement;
+
 /**
  * PHP BULK API CLIENT
  * @author Ryan Brainard
@@ -28,46 +32,49 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
+class JobInfo
+{
+    use Concerns\HasValidXml;
 
-class JobInfo {
     private $xml;
 
-    public function __construct($xml = null) {
+    public function __construct($xml = null)
+    {
         if ($xml != null) {
             try {
                 libxml_disable_entity_loader(true);
-                $this->xml = new SimpleXMLElement(disallowDoctype($xml));
+                $this->xml = new SimpleXMLElement($this->disallowDoctype($xml));
             } finally {
                 libxml_disable_entity_loader(false);
             }
         } else {
-            $this->xml = new SimpleXMLElement("<jobInfo xmlns=\"http://www.force.com/2009/06/asyncapi/dataload\"/>");
+            $this->xml = new SimpleXMLElement('<jobInfo xmlns="http://www.force.com/2009/06/asyncapi/dataload"/>');
 
             //setting writeable fields in their required sequence; otherwise, API can't parse correctly
             //if any of them are still empty after  setting values, we unset them before converting to XML
-            $this->xml->id = "";
-            $this->xml->operation = "";
-            $this->xml->object = "";
-            $this->xml->state = "";
-            $this->xml->externalIdFieldName = "";
-            $this->xml->concurrencyMode = "";
-            $this->xml->contentType = "";
-            $this->xml->assignmentRuleId = "";
+            $this->xml->id = '';
+            $this->xml->operation = '';
+            $this->xml->object = '';
+            $this->xml->state = '';
+            $this->xml->externalIdFieldName = '';
+            $this->xml->concurrencyMode = '';
+            $this->xml->contentType = '';
+            $this->xml->assignmentRuleId = '';
         }
 
-        if ($this->getExceptionCode() != "") {
-            throw new Exception($this->getExceptionCode() . ": " . $this->getExceptionMessage());
+        if ($this->getExceptionCode() != '') {
+            throw new \Exception($this->getExceptionCode() . ': ' . $this->getExceptionMessage());
         }
     }
 
-    public function asXml() {
+    public function asXml()
+    {
         //removing empty fields to allow API to parse correctly
         //two loops are needed to not cause errors
-        $emptyFields = array();
-        foreach ($this->xml as $field=>$value) {
-            if ($value == "") {
+        $emptyFields = [];
+        foreach ($this->xml as $field => $value) {
+            if ($value == '') {
                 $emptyFields[] = $field;
             }
         }
@@ -78,140 +85,170 @@ class JobInfo {
         return $this->xml->asXML();
     }
 
-    //SETTERS
-    public function setId($id) {
+    public function setId($id)
+    {
         $this->xml->id = $id;
     }
 
-    public function setOpertion($operation) {
+    public function setOpertion($operation)
+    {
         $this->xml->operation = $operation;
     }
 
-    public function setObject($object) {
+    public function setObject($object)
+    {
         $this->xml->object = $object;
     }
 
-    public function setExternalIdFieldName($externalIdFieldName) {
+    public function setExternalIdFieldName($externalIdFieldName)
+    {
         $this->xml->externalIdFieldName = $externalIdFieldName;
     }
 
-    public function setAssignmentRuleId($assignmentRuleId) {
+    public function setAssignmentRuleId($assignmentRuleId)
+    {
         $this->xml->assignmentRuleId = $assignmentRuleId;
     }
 
-    public function setState($state) {
+    public function setState($state)
+    {
         $this->xml->state = $state;
     }
 
-    public function setConcurrencyMode($concurrencyMode) {
+    public function setConcurrencyMode($concurrencyMode)
+    {
         $this->xml->concurrencyMode = $concurrencyMode;
     }
 
-    public function setContentType($contentType) {
+    public function setContentType($contentType)
+    {
         $this->xml->contentType = $contentType;
     }
 
-    //GETTERS
-    public function getId() {
+    public function getId()
+    {
         return $this->xml->id;
     }
 
-    public function getOpertion() {
+    public function getOpertion()
+    {
         return $this->xml->operation;
     }
 
-    public function getObject() {
+    public function getObject()
+    {
         return $this->xml->object;
     }
 
-    public function getExternalIdFieldName() {
+    public function getExternalIdFieldName()
+    {
         return $this->xml->externalIdFieldName;
     }
 
-    public function getCreatedById() {
+    public function getCreatedById()
+    {
         return $this->xml->createdById;
     }
 
-    public function getCreatedDate() {
+    public function getCreatedDate()
+    {
         return $this->xml->createdDate;
     }
 
-    public function getSystemModstamp() {
+    public function getSystemModstamp()
+    {
         return $this->xml->systemModstamp;
     }
 
-    public function getState() {
+    public function getState()
+    {
         return $this->xml->state;
     }
 
-    public function getStateMessage() {
+    public function getStateMessage()
+    {
         return $this->xml->stateMessage;
     }
 
-    public function getConcurrencyMode() {
+    public function getConcurrencyMode()
+    {
         return $this->xml->concurrencyMode;
     }
 
-    public function getContentType() {
+    public function getContentType()
+    {
         return $this->xml->contentType;
     }
 
-    public function getNumberBatchesQueued() {
+    public function getNumberBatchesQueued()
+    {
         return $this->xml->numberBatchesQueued;
     }
 
-    public function getNumberBatchesInProgress() {
+    public function getNumberBatchesInProgress()
+    {
         return $this->xml->numberBatchesInProgress;
     }
 
-    public function getNumberBatchesCompleted() {
+    public function getNumberBatchesCompleted()
+    {
         return $this->xml->numberBatchesCompleted;
     }
 
-    public function getNumberBatchesFailed() {
+    public function getNumberBatchesFailed()
+    {
         return $this->xml->numberBatchesFailed;
     }
 
-    public function getNumberBatchesTotal() {
+    public function getNumberBatchesTotal()
+    {
         return $this->xml->numberBatchesTotal;
     }
 
-    public function getNumberRecordsProcessed() {
+    public function getNumberRecordsProcessed()
+    {
         return $this->xml->numberRecordsProcessed;
     }
 
-    public function getNumberRetries() {
+    public function getNumberRetries()
+    {
         return $this->xml->numberRetries;
     }
 
-    public function getApiVersion() {
+    public function getApiVersion()
+    {
         return $this->xml->apiVersion;
     }
 
-    public function getExceptionCode() {
+    public function getExceptionCode()
+    {
         return $this->xml->exceptionCode;
     }
 
-    public function getExceptionMessage() {
+    public function getExceptionMessage()
+    {
         return $this->xml->exceptionMessage;
     }
 
     //New in 19.0 Below:
 
-    public function getTotalProcessingTime() {
+    public function getTotalProcessingTime()
+    {
         return $this->xml->totalProcessingTime;
     }
 
-    public function getApexProcessingTime() {
+    public function getApexProcessingTime()
+    {
         return $this->xml->apexProcessingTime;
     }
 
-    public function getApiActiveProcessingTime() {
+    public function getApiActiveProcessingTime()
+    {
         return $this->xml->apiActiveProcessingTime;
     }
 
-    public function getNumberRecordsFailed() {
+    public function getNumberRecordsFailed()
+    {
         return $this->xml->numberRecordsFailed;
     }
 }
-?>
